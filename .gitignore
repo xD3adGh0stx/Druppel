@@ -31,3 +31,4 @@ android/local.properties
 
 # Logo source files
 logo_druppel*.png
+.claude/
