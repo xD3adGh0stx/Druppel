@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Druppel</string>
+    <string name="title_activity_main">Druppel</string>
+    <string name="package_name">nl.druppel.app</string>
+    <string name="custom_url_scheme">nl.druppel.app</string>
+</resources>
