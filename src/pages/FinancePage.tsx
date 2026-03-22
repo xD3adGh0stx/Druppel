@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
-  getAllPots, addPot, updatePot, deletePot, getPotBalance,
+  getAllPots, addPot, updatePot, deletePot, getPotBalance, getTransactionsForPot,
   getMonthlyStats,
   getAllBankAccounts, addBankAccount, updateBankAccount, deleteBankAccount, getAccountBalance,
-  addManualTransaction, getTransactionsForAccount, deleteTransaction,
+  addManualTransaction, getTransactionsForAccount, deleteTransactionWithGroup,
 } from '../lib/database'
 import type { Pot, Transaction, BankAccount, AccountType, TransactionType, RecurringType } from '../types'
 import { COLORS } from '../types'
@@ -183,19 +183,25 @@ function ActionForm({ accounts, pots, defaultAccountId, onSubmit, onCancel }: {
   onCancel: () => void
 }) {
   const today = new Date().toISOString().split('T')[0]
+  const [accountId, setAccountId] = useState(defaultAccountId ?? accounts[0]?.id ?? '')
   const [type, setType]           = useState<TransactionType>('income')
   const [amount, setAmount]       = useState('')
   const [description, setDesc]    = useState('')
   const [date, setDate]           = useState(today)
-  const [accountId, setAccountId] = useState(defaultAccountId ?? accounts[0]?.id ?? '')
   const [toAccountId, setToAccId] = useState(accounts.find(a => a.id !== (defaultAccountId ?? accounts[0]?.id))?.id ?? '')
   const [potId, setPotId]         = useState(pots[0]?.id ?? '')
   const [recurring, setRecurring] = useState<RecurringType | ''>('')
 
+  const balance = accountId ? getAccountBalance(accountId) : 0
+  const amt = parseFloat(amount.replace(',', '.')) || 0
+  const isDebit = type === 'expense' || type === 'transfer' || type === 'pot_allocation'
+  const remaining = isDebit ? balance - amt : balance + amt
+  const goingNegative = isDebit && amt > balance
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const amt = parseFloat(amount.replace(',', '.'))
     if (!amt || amt <= 0) return
+    const isFuture = date > today
     addManualTransaction({
       type, date,
       description: description || TX_TYPES.find(t => t.type === type)!.label,
@@ -204,11 +210,13 @@ function ActionForm({ accounts, pots, defaultAccountId, onSubmit, onCancel }: {
       toAccountId: type === 'transfer' ? (toAccountId || null) : null,
       potId: type === 'pot_allocation' ? (potId || null) : null,
       recurring: recurring || null,
+      isExpected: isFuture ? 1 : 0,
     })
     onSubmit()
   }
 
   const txMeta = TX_TYPES.find(t => t.type === type)!
+  const selectedAccount = accounts.find(a => a.id === accountId)
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4">
@@ -218,6 +226,39 @@ function ActionForm({ accounts, pots, defaultAccountId, onSubmit, onCancel }: {
           <button onClick={onCancel} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"><X className="w-5 h-5 text-slate-400" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
+
+          {/* 1. Rekening kiezen (eerst!) */}
+          {accounts.length > 0 && (
+            <div>
+              <label className={labelCls}>Rekening</label>
+              <div className="grid gap-2">
+                {accounts.map(a => {
+                  const bal = getAccountBalance(a.id)
+                  const isSelected = a.id === accountId
+                  return (
+                    <button key={a.id} type="button" onClick={() => setAccountId(a.id)}
+                      className={`flex items-center justify-between px-3 py-2.5 rounded-xl border-2 text-sm transition-all ${
+                        isSelected
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400'
+                          : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                      }`}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: a.color }} />
+                        <span className="font-medium">{a.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`font-semibold text-xs ${bal < 0 ? 'text-red-500' : 'text-slate-600 dark:text-slate-300'}`}>
+                          {formatCurrency(bal)}
+                        </span>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 2. Type actie */}
           <div>
             <label className={labelCls}>Type actie</label>
             <div className="grid grid-cols-2 gap-2">
@@ -230,31 +271,59 @@ function ActionForm({ accounts, pots, defaultAccountId, onSubmit, onCancel }: {
               ))}
             </div>
           </div>
+
+          {/* 3. Bedrag + max knop */}
           <div>
-            <label className={labelCls}>Bedrag</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className={labelCls + ' mb-0'}>Bedrag</label>
+              {selectedAccount && isDebit && (
+                <button type="button" onClick={() => setAmount(balance.toFixed(2))}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium">
+                  Max: {formatCurrency(balance)}
+                </button>
+              )}
+            </div>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">€</span>
-              <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="0,00" className={`${inputCls} pl-7`} required inputMode="decimal" />
+              <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="0,00"
+                className={`${inputCls} pl-7`} required inputMode="decimal" />
             </div>
+            {/* Overhoud preview */}
+            {amt > 0 && accountId && (
+              <p className={`text-xs mt-1.5 ${goingNegative ? 'text-red-500 font-medium' : 'text-slate-400'}`}>
+                {isDebit ? 'Overhoud na actie' : 'Saldo na actie'}: {formatCurrency(remaining)}
+              </p>
+            )}
           </div>
+
+          {/* Waarschuwing bij negatief */}
+          {goingNegative && amt > 0 && (
+            <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2.5">
+              <span className="text-amber-500 shrink-0 mt-0.5">⚠️</span>
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                Het bedrag is hoger dan je saldo. Je rekening komt in de min te staan.
+              </p>
+            </div>
+          )}
+
+          {/* 4. Omschrijving */}
           <div>
             <label className={labelCls}>Omschrijving</label>
             <input value={description} onChange={e => setDesc(e.target.value)}
               placeholder={type === 'income' ? 'Salaris' : type === 'expense' ? 'Boodschappen' : type === 'transfer' ? 'Sparen' : 'Vakantie pot'}
               className={inputCls} />
           </div>
+
+          {/* 5. Datum */}
           <div>
             <label className={labelCls}>Datum</label>
             <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} required />
+            {date > today && (
+              <p className="text-xs text-blue-500 mt-1">Toekomstige datum — wordt opgeslagen als verwachte actie</p>
+            )}
           </div>
-          {accounts.length > 0 && (
-            <div>
-              <label className={labelCls}>{type === 'income' ? 'Naar rekening' : 'Van rekening'}</label>
-              <select value={accountId} onChange={e => setAccountId(e.target.value)} className={inputCls}>
-                {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
-            </div>
-          )}
+
+          {/* 6. Naar rekening (transfer) */}
           {type === 'transfer' && accounts.length > 1 && (
             <div>
               <label className={labelCls}>Naar rekening</label>
@@ -263,6 +332,8 @@ function ActionForm({ accounts, pots, defaultAccountId, onSubmit, onCancel }: {
               </select>
             </div>
           )}
+
+          {/* 7. Naar potje */}
           {type === 'pot_allocation' && (
             pots.length > 0
               ? <div>
@@ -275,6 +346,8 @@ function ActionForm({ accounts, pots, defaultAccountId, onSubmit, onCancel }: {
                   Maak eerst een potje aan.
                 </p>
           )}
+
+          {/* 8. Herhaling */}
           <div>
             <label className={labelCls}>Herhaling</label>
             <div className="grid grid-cols-2 gap-2">
@@ -288,6 +361,7 @@ function ActionForm({ accounts, pots, defaultAccountId, onSubmit, onCancel }: {
               ))}
             </div>
           </div>
+
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onCancel} className="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300">Annuleren</button>
             <button type="submit" className="flex-1 px-4 py-2.5 text-white rounded-lg text-sm font-medium" style={{ backgroundColor: txMeta.color }}>Toevoegen</button>
@@ -319,8 +393,8 @@ function AccountDetail({ account, accounts, pots, onBack, onReload }: {
   useEffect(() => { load() }, [account.id])
 
   function handleDelete(id: string) {
-    if (!confirm('Transactie verwijderen?')) return
-    deleteTransaction(id); load(); onReload()
+    if (!confirm('Transactie verwijderen? Gekoppelde transacties (overboeking/potje) worden ook teruggedraaid.')) return
+    deleteTransactionWithGroup(id); load(); onReload()
   }
 
   return (
@@ -353,10 +427,15 @@ function AccountDetail({ account, accounts, pots, onBack, onReload }: {
       ) : (
         <div className={`${card} rounded-xl divide-y divide-slate-100 dark:divide-slate-800`}>
           {transactions.map(tx => (
-            <div key={tx.id} className="flex items-center gap-3 px-4 py-3">
+            <div key={tx.id} className={`flex items-center gap-3 px-4 py-3 ${tx.isExpected ? 'opacity-70' : ''}`}>
               <TxIcon type={tx.type} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-slate-700 dark:text-slate-300 truncate">{tx.description}</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className="text-sm text-slate-700 dark:text-slate-300 truncate">{tx.description}</p>
+                  {tx.isExpected ? (
+                    <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-full font-medium shrink-0">Verwacht</span>
+                  ) : null}
+                </div>
                 <div className="flex items-center gap-2 mt-0.5">
                   <p className="text-xs text-slate-400">{formatDate(tx.date)}</p>
                   {tx.recurring && (
@@ -386,6 +465,96 @@ function AccountDetail({ account, accounts, pots, onBack, onReload }: {
   )
 }
 
+function PotDetail({ pot, accounts, pots, onBack, onReload }: {
+  pot: Pot; accounts: BankAccount[]; pots: Pot[]
+  onBack: () => void; onReload: () => void
+}) {
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [showAction, setShowAction] = useState(false)
+  const balance = getPotBalance(pot.id)
+  const pct = pot.budgetAmount > 0 ? Math.min((balance / pot.budgetAmount) * 100, 100) : 0
+
+  function load() { setTransactions(getTransactionsForPot(pot.id)) }
+  useEffect(() => { load() }, [pot.id])
+
+  function handleDelete(id: string) {
+    if (!confirm('Transactie verwijderen? Het geld wordt teruggezet naar de rekening.')) return
+    deleteTransactionWithGroup(id); load(); onReload()
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-4">
+        <button onClick={onBack} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+          <ChevronLeft className="w-5 h-5 text-slate-500" />
+        </button>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: pot.color }} />
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white truncate">{pot.name}</h2>
+          </div>
+          {pot.description && <p className="text-xs text-slate-400 ml-5">{pot.description}</p>}
+        </div>
+        <button onClick={() => setShowAction(true)} className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium shrink-0">
+          <Plus className="w-4 h-4" />Actie
+        </button>
+      </div>
+
+      <div className={`${card} rounded-xl p-5 mb-5`} style={{ borderColor: pot.color + '60' }}>
+        <div className="flex items-end justify-between mb-2">
+          <div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Huidig saldo</p>
+            <p className={`text-3xl font-bold ${balance >= pot.budgetAmount && pot.budgetAmount > 0 ? 'text-green-500' : 'text-slate-800 dark:text-white'}`}>
+              {formatCurrency(balance)}
+            </p>
+          </div>
+          <p className="text-sm text-slate-400">doel: {formatCurrency(pot.budgetAmount)}</p>
+        </div>
+        <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: pot.color }} />
+        </div>
+        <p className="text-xs text-slate-400 mt-1.5">{formatCurrency(pot.budgetAmount - balance)} te gaan</p>
+      </div>
+
+      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Transacties</p>
+      {transactions.length === 0 ? (
+        <div className={`${card} rounded-xl p-8 text-center`}>
+          <p className="text-slate-400 text-sm">Nog geen transacties — gebruik "Naar potje" om geld toe te voegen.</p>
+        </div>
+      ) : (
+        <div className={`${card} rounded-xl divide-y divide-slate-100 dark:divide-slate-800`}>
+          {transactions.map(tx => (
+            <div key={tx.id} className={`flex items-center gap-3 px-4 py-3 ${tx.isExpected ? 'opacity-70' : ''}`}>
+              <TxIcon type={tx.type} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm text-slate-700 dark:text-slate-300 truncate">{tx.description}</p>
+                  {tx.isExpected ? (
+                    <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-full font-medium shrink-0">Verwacht</span>
+                  ) : null}
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">{formatDate(tx.date)}</p>
+              </div>
+              <span className={`text-sm font-semibold shrink-0 ${tx.amount >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {tx.amount > 0 ? '+' : ''}{formatCurrency(Math.abs(tx.amount))}
+              </span>
+              <button onClick={() => handleDelete(tx.id)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg shrink-0">
+                <Trash2 className="w-3.5 h-3.5 text-red-400" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showAction && (
+        <ActionForm accounts={accounts} pots={pots} defaultAccountId={accounts[0]?.id}
+          onSubmit={() => { setShowAction(false); load(); onReload() }}
+          onCancel={() => setShowAction(false)} />
+      )}
+    </div>
+  )
+}
+
 export default function FinancePage() {
   const now = new Date()
   const [accounts, setAccounts]        = useState<BankAccount[]>([])
@@ -399,6 +568,7 @@ export default function FinancePage() {
   const [editingPot, setEditPot]       = useState<Pot | null>(null)
   const [showAction, setShowAction]    = useState(false)
   const [selectedAccount, setSelected] = useState<BankAccount | null>(null)
+  const [selectedPot, setSelectedPot]  = useState<Pot | null>(null)
 
   function reload() {
     const accs = getAllBankAccounts()
@@ -431,6 +601,15 @@ export default function FinancePage() {
       <div className="max-w-4xl mx-auto">
         <AccountDetail account={selectedAccount} accounts={accounts} pots={pots}
           onBack={() => { setSelected(null); reload() }} onReload={reload} />
+      </div>
+    )
+  }
+
+  if (selectedPot) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <PotDetail pot={selectedPot} accounts={accounts} pots={pots}
+          onBack={() => { setSelectedPot(null); reload() }} onReload={reload} />
       </div>
     )
   }
@@ -546,7 +725,8 @@ export default function FinancePage() {
               const pct = pot.budgetAmount > 0 ? Math.min((bal / pot.budgetAmount) * 100, 100) : 0
               const reached = bal >= pot.budgetAmount && pot.budgetAmount > 0
               return (
-                <div key={pot.id} className={`${card} rounded-xl p-4`}>
+                <div key={pot.id} className={`${card} rounded-xl p-4 cursor-pointer hover:shadow-md transition-shadow`}
+                  onClick={() => setSelectedPot(pot)}>
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: pot.color }} />
@@ -555,7 +735,7 @@ export default function FinancePage() {
                         {pot.description && <p className="text-xs text-slate-400">{pot.description}</p>}
                       </div>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                       <button onClick={() => setEditPot(pot)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"><Edit3 className="w-3.5 h-3.5 text-slate-400" /></button>
                       <button onClick={() => handleDelPot(pot)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
                     </div>

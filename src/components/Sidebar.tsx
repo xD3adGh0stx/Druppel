@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, CreditCard, PiggyBank, User } from 'lucide-react'
+import { LayoutDashboard, CreditCard, PiggyBank, CalendarDays, User } from 'lucide-react'
 import { useProfile } from '../context/ProfileContext'
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/subscriptions', icon: CreditCard, label: 'Abonnementen' },
   { to: '/finance', icon: PiggyBank, label: 'Financiën' },
+  { to: '/planning', icon: CalendarDays, label: 'Planning' },
 ]
 
 function Avatar({ size = 'sm' }: { size?: 'sm' | 'md' }) {
@@ -29,30 +30,29 @@ export default function Sidebar() {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex-col shrink-0">
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800">
+      <aside className="hidden md:flex w-56 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex-col shrink-0">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
-            <img src="/logo.png" alt="Druppel" className="w-8 h-8" />
-            <span className="text-xl font-bold text-slate-800 dark:text-white">Druppel</span>
+            <img src="/logo.png" alt="Druppel" className="w-7 h-7" />
+            <span className="text-lg font-bold text-slate-800 dark:text-white">Druppel</span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">Abonnementen tracker</p>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 p-3 space-y-0.5">
           {navItems.map(item => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.to === '/'}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   isActive
                     ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-white'
                 }`
               }
             >
-              <item.icon className="w-5 h-5" />
+              <item.icon className="w-4 h-4" />
               {item.label}
             </NavLink>
           ))}
@@ -87,7 +87,7 @@ export default function Sidebar() {
             to={item.to}
             end={item.to === '/'}
             className={({ isActive }) =>
-              `flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium transition-colors ${
+              `flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors ${
                 isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'
               }`
             }
@@ -104,7 +104,7 @@ export default function Sidebar() {
         <NavLink
           to="/account"
           className={({ isActive }) =>
-            `flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium transition-colors ${
+            `flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors ${
               isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'
             }`
           }
@@ -112,7 +112,7 @@ export default function Sidebar() {
           {({ isActive }) => (
             <>
               <div className={`w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold ${isActive ? 'ring-2 ring-blue-500' : ''}`}
-                style={{ backgroundColor: isActive ? undefined : undefined, background: profile.avatarColor }}>
+                style={{ background: profile.avatarColor }}>
                 {profile.name ? profile.name[0].toUpperCase() : <User className="w-3 h-3" />}
               </div>
               <span>Account</span>

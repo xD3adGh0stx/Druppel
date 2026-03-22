@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { initDatabase, getAllSubscriptions } from './lib/database'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
 import { ProfileProvider, useProfile } from './context/ProfileContext'
@@ -12,8 +12,11 @@ import SubscriptionDetail from './pages/SubscriptionDetail'
 import ImportPage from './pages/ImportPage'
 import FinancePage from './pages/FinancePage'
 import AccountPage from './pages/AccountPage'
+import PlanningPage from './pages/PlanningPage'
 import { Loader2 } from 'lucide-react'
 import { StatusBar, Style } from '@capacitor/status-bar'
+
+const SWIPE_ROUTES = ['/', '/subscriptions', '/finance', '/planning']
 
 async function applyStatusBar() {
   try {
@@ -22,6 +25,49 @@ async function applyStatusBar() {
   } catch {
     // Not on native platform, no-op
   }
+}
+
+function SwipeWrapper({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const touchStartX = useRef<number | null>(null)
+  const touchStartY = useRef<number | null>(null)
+
+  function onTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+  }
+
+  function onTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null || touchStartY.current === null) return
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    const dy = e.changedTouches[0].clientY - touchStartY.current
+    // Only horizontal swipes (dx > 60px and more horizontal than vertical)
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return
+
+    const currentPath = location.pathname
+    const idx = SWIPE_ROUTES.indexOf(currentPath)
+    if (idx === -1) return
+
+    if (dx < 0 && idx < SWIPE_ROUTES.length - 1) {
+      navigate(SWIPE_ROUTES[idx + 1])
+    } else if (dx > 0 && idx > 0) {
+      navigate(SWIPE_ROUTES[idx - 1])
+    }
+
+    touchStartX.current = null
+    touchStartY.current = null
+  }
+
+  return (
+    <main
+      className="flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
+      {children}
+    </main>
+  )
 }
 
 function AppInner() {
@@ -35,7 +81,6 @@ function AppInner() {
     initDatabase()
       .then(async () => {
         setLoading(false)
-        // Request permission and schedule notifications
         const granted = await requestNotificationPermission()
         if (granted) {
           const subs = getAllSubscriptions()
@@ -75,16 +120,17 @@ function AppInner() {
       style={{ paddingTop: 'env(safe-area-inset-top, 24px)' }}>
       {isFirstLaunch && <WelcomeModal />}
       <Sidebar />
-      <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6">
+      <SwipeWrapper>
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/subscriptions" element={<Subscriptions />} />
           <Route path="/subscriptions/:id" element={<SubscriptionDetail />} />
           <Route path="/finance" element={<FinancePage />} />
+          <Route path="/planning" element={<PlanningPage />} />
           <Route path="/import" element={<ImportPage />} />
           <Route path="/account" element={<AccountPage />} />
         </Routes>
-      </main>
+      </SwipeWrapper>
     </div>
   )
 }
