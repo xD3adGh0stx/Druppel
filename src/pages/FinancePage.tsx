@@ -176,21 +176,23 @@ function PotForm({ initial, onSubmit, onCancel }: {
   )
 }
 
-function ActionForm({ accounts, pots, defaultAccountId, onSubmit, onCancel }: {
+function ActionForm({ accounts, pots, defaultAccountId, defaultType, defaultPotId, onSubmit, onCancel }: {
   accounts: BankAccount[]
   pots: Pot[]
   defaultAccountId?: string
+  defaultType?: TransactionType
+  defaultPotId?: string
   onSubmit: () => void
   onCancel: () => void
 }) {
   const today = new Date().toISOString().split('T')[0]
   const [accountId, setAccountId] = useState(defaultAccountId ?? accounts[0]?.id ?? '')
-  const [type, setType]           = useState<TransactionType>('expense')
+  const [type, setType]           = useState<TransactionType>(defaultType ?? 'expense')
   const [amount, setAmount]       = useState('')
   const [description, setDesc]    = useState('')
   const [date, setDate]           = useState(today)
   const [toAccountId, setToAccId] = useState(accounts.find(a => a.id !== (defaultAccountId ?? accounts[0]?.id))?.id ?? '')
-  const [potId, setPotId]         = useState(pots[0]?.id ?? '')
+  const [potId, setPotId]         = useState(defaultPotId ?? pots[0]?.id ?? '')
   const [recurring, setRecurring] = useState<RecurringType | ''>('')
   const [isExpected, setExpected] = useState(false)
 
@@ -540,6 +542,7 @@ function PotDetail({ pot, accounts, pots, onBack, onReload }: {
 
       {showAction && (
         <ActionForm accounts={accounts} pots={pots}
+          defaultType="pot_allocation" defaultPotId={pot.id}
           onSubmit={() => { setShowAction(false); load(); onReload() }}
           onCancel={() => setShowAction(false)} />
       )}
