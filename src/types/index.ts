@@ -11,6 +11,7 @@ export interface Subscription {
   nextPaymentDate: string;
   notes: string;
   website: string;
+  imageUrl: string;
   color: string;
   active: boolean;
   createdAt: string;
@@ -31,6 +32,8 @@ export interface Transaction {
   potId: string | null;
   subscriptionId: string | null;
   recurring: RecurringType | null;
+  groupId: string | null;
+  isExpected: number;
   source: 'manual' | 'csv' | 'mt940' | 'pdf';
   raw: string;
   createdAt: string;
@@ -66,15 +69,44 @@ export interface ImportResult {
 }
 
 export const CATEGORIES = [
-  'Streaming',
-  'Muziek',
+  // Entertainment
+  'Streaming video',
+  'Streaming muziek',
   'Gaming',
-  'Software',
+  'Podcasts & Audio',
+  'Boeken & E-readers',
+  'Sport & Fitness',
+  // Software & Tech
+  'Software & Apps',
   'Cloud opslag',
+  'VPN & Beveiliging',
+  'AI & Productiviteit',
+  'Webhosting',
+  'Developer tools',
+  // Communicatie
+  'Telefoon',
+  'Internet',
+  'Nieuwsbrief',
   'Nieuws & Media',
-  'Fitness',
+  // Financieel
   'Verzekering',
-  'Telefoon & Internet',
+  'Bank & Betalen',
+  'Investeren',
+  // Levensstijl
+  'Eten & Drinken',
+  'Mode & Kleding',
+  'Beauty & Verzorging',
+  'Reizen',
+  'Auto & Vervoer',
+  'Wonen & Energie',
+  'Huisdieren',
+  // Onderwijs
+  'Onderwijs & Cursussen',
+  'Taal leren',
+  // Zakelijk
+  'Zakelijk',
+  'Marketing',
+  // Overig
   'Overig',
 ] as const;
 

@@ -33,6 +33,7 @@ export async function initDatabase(): Promise<Database> {
       nextPaymentDate TEXT NOT NULL,
       notes TEXT DEFAULT '',
       website TEXT DEFAULT '',
+      imageUrl TEXT DEFAULT '',
       color TEXT DEFAULT '#3B82F6',
       active INTEGER DEFAULT 1,
       createdAt TEXT NOT NULL,
@@ -77,6 +78,8 @@ export async function initDatabase(): Promise<Database> {
       potId TEXT,
       subscriptionId TEXT,
       recurring TEXT,
+      groupId TEXT,
+      isExpected INTEGER DEFAULT 0,
       source TEXT NOT NULL DEFAULT 'manual',
       raw TEXT DEFAULT '',
       createdAt TEXT NOT NULL,
@@ -86,11 +89,14 @@ export async function initDatabase(): Promise<Database> {
 
   // Migrations
   try { db.run(`ALTER TABLE subscriptions ADD COLUMN website TEXT DEFAULT ''`); } catch { /* exists */ }
+  try { db.run(`ALTER TABLE subscriptions ADD COLUMN imageUrl TEXT DEFAULT ''`); } catch { /* exists */ }
   try { db.run(`ALTER TABLE transactions ADD COLUMN potId TEXT`); } catch { /* exists */ }
   try { db.run(`ALTER TABLE transactions ADD COLUMN accountId TEXT`); } catch { /* exists */ }
   try { db.run(`ALTER TABLE transactions ADD COLUMN toAccountId TEXT`); } catch { /* exists */ }
   try { db.run(`ALTER TABLE transactions ADD COLUMN type TEXT NOT NULL DEFAULT 'expense'`); } catch { /* exists */ }
   try { db.run(`ALTER TABLE transactions ADD COLUMN recurring TEXT`); } catch { /* exists */ }
+  try { db.run(`ALTER TABLE transactions ADD COLUMN groupId TEXT`); } catch { /* exists */ }
+  try { db.run(`ALTER TABLE transactions ADD COLUMN isExpected INTEGER DEFAULT 0`); } catch { /* exists */ }
 
   return db;
 }
@@ -140,9 +146,9 @@ export function addSubscription(sub: Omit<Subscription, 'id' | 'createdAt' | 'up
   const id = uuidv4();
   const now = new Date().toISOString();
   getDb().run(
-    `INSERT INTO subscriptions (id, name, category, price, currency, billingCycle, startDate, nextPaymentDate, notes, website, color, active, createdAt, updatedAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, sub.name, sub.category, sub.price, sub.currency, sub.billingCycle, sub.startDate, sub.nextPaymentDate, sub.notes, sub.website ?? '', sub.color, sub.active ? 1 : 0, now, now]
+    `INSERT INTO subscriptions (id, name, category, price, currency, billingCycle, startDate, nextPaymentDate, notes, website, imageUrl, color, active, createdAt, updatedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [id, sub.name, sub.category, sub.price, sub.currency, sub.billingCycle, sub.startDate, sub.nextPaymentDate, sub.notes, sub.website ?? '', sub.imageUrl ?? '', sub.color, sub.active ? 1 : 0, now, now]
   );
   saveDatabase();
   return { ...sub, id, createdAt: now, updatedAt: now };
@@ -194,40 +200,41 @@ export function addManualTransaction(tx: {
   toAccountId: string | null
   potId: string | null
   recurring: RecurringType | null
+  isExpected?: number
 }): void {
   const now = new Date().toISOString();
+  const isExpected = tx.isExpected ?? 0;
 
   if (tx.type === 'transfer' && tx.accountId && tx.toAccountId) {
-    // Two entries: debit from source, credit to target
+    const groupId = uuidv4();
     getDb().run(
-      `INSERT INTO transactions (id, date, description, amount, type, accountId, toAccountId, potId, subscriptionId, recurring, source, raw, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, 'manual', '', ?)`,
-      [uuidv4(), tx.date, tx.description, -Math.abs(tx.amount), 'transfer', tx.accountId, tx.toAccountId, tx.recurring, now]
+      `INSERT INTO transactions (id, date, description, amount, type, accountId, toAccountId, potId, subscriptionId, recurring, groupId, isExpected, source, raw, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, 'manual', '', ?)`,
+      [uuidv4(), tx.date, tx.description, -Math.abs(tx.amount), 'transfer', tx.accountId, tx.toAccountId, tx.recurring, groupId, isExpected, now]
     );
     getDb().run(
-      `INSERT INTO transactions (id, date, description, amount, type, accountId, toAccountId, potId, subscriptionId, recurring, source, raw, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, 'manual', '', ?)`,
-      [uuidv4(), tx.date, tx.description, Math.abs(tx.amount), 'transfer', tx.toAccountId, tx.accountId, tx.recurring, now]
+      `INSERT INTO transactions (id, date, description, amount, type, accountId, toAccountId, potId, subscriptionId, recurring, groupId, isExpected, source, raw, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, 'manual', '', ?)`,
+      [uuidv4(), tx.date, tx.description, Math.abs(tx.amount), 'transfer', tx.toAccountId, tx.accountId, tx.recurring, groupId, isExpected, now]
     );
   } else if (tx.type === 'pot_allocation' && tx.accountId && tx.potId) {
-    // Debit from account
+    const groupId = uuidv4();
     getDb().run(
-      `INSERT INTO transactions (id, date, description, amount, type, accountId, toAccountId, potId, subscriptionId, recurring, source, raw, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, 'manual', '', ?)`,
-      [uuidv4(), tx.date, tx.description, -Math.abs(tx.amount), 'pot_allocation', tx.accountId, tx.recurring, now]
+      `INSERT INTO transactions (id, date, description, amount, type, accountId, toAccountId, potId, subscriptionId, recurring, groupId, isExpected, source, raw, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?, 'manual', '', ?)`,
+      [uuidv4(), tx.date, tx.description, -Math.abs(tx.amount), 'pot_allocation', tx.accountId, tx.recurring, groupId, isExpected, now]
     );
-    // Credit to pot
     getDb().run(
-      `INSERT INTO transactions (id, date, description, amount, type, accountId, toAccountId, potId, subscriptionId, recurring, source, raw, createdAt)
-       VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, NULL, ?, 'manual', '', ?)`,
-      [uuidv4(), tx.date, tx.description, Math.abs(tx.amount), 'pot_allocation', tx.potId, tx.recurring, now]
+      `INSERT INTO transactions (id, date, description, amount, type, accountId, toAccountId, potId, subscriptionId, recurring, groupId, isExpected, source, raw, createdAt)
+       VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, NULL, ?, ?, ?, 'manual', '', ?)`,
+      [uuidv4(), tx.date, tx.description, Math.abs(tx.amount), 'pot_allocation', tx.potId, tx.recurring, groupId, isExpected, now]
     );
   } else {
     const amount = tx.type === 'income' ? Math.abs(tx.amount) : -Math.abs(tx.amount);
     getDb().run(
-      `INSERT INTO transactions (id, date, description, amount, type, accountId, toAccountId, potId, subscriptionId, recurring, source, raw, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?, NULL, ?, NULL, ?, 'manual', '', ?)`,
-      [uuidv4(), tx.date, tx.description, amount, tx.type, tx.accountId, tx.potId, tx.recurring, now]
+      `INSERT INTO transactions (id, date, description, amount, type, accountId, toAccountId, potId, subscriptionId, recurring, groupId, isExpected, source, raw, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, NULL, ?, NULL, ?, NULL, ?, 'manual', '', ?)`,
+      [uuidv4(), tx.date, tx.description, amount, tx.type, tx.accountId, tx.potId, tx.recurring, isExpected, now]
     );
   }
 
@@ -249,6 +256,20 @@ export function addTransactions(txs: Omit<Transaction, 'id' | 'createdAt'>[], ac
 
 export function deleteTransaction(id: string): void {
   getDb().run('DELETE FROM transactions WHERE id = ?', [id]);
+  saveDatabase();
+}
+
+export function deleteTransactionWithGroup(id: string): void {
+  // Get the transaction first to check if it has a groupId
+  const r = mapRows<Transaction>(getDb().exec('SELECT * FROM transactions WHERE id = ?', [id]));
+  if (r.length === 0) return;
+  const tx = r[0];
+  if (tx.groupId) {
+    // Delete all transactions in the same group
+    getDb().run('DELETE FROM transactions WHERE groupId = ?', [tx.groupId]);
+  } else {
+    getDb().run('DELETE FROM transactions WHERE id = ?', [id]);
+  }
   saveDatabase();
 }
 

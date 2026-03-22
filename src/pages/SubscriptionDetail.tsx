@@ -47,7 +47,7 @@ export default function SubscriptionDetail() {
   const actualTotal = totalPaid > 0 ? totalPaid : estimateTotalPaid(sub)
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-2xl mx-auto">
       {/* Header */}
       <button
         onClick={() => navigate('/subscriptions')}
@@ -57,41 +57,43 @@ export default function SubscriptionDetail() {
         Terug naar abonnementen
       </button>
 
-      <div className={`${card} rounded-xl p-6 mb-6`}>
+      <div className={`${card} rounded-xl p-5 mb-4`}>
         <div className="flex items-start gap-4">
-          <div
-            className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-xl shrink-0"
-            style={{ backgroundColor: sub.color }}
-          >
-            {sub.name.charAt(0).toUpperCase()}
-          </div>
-          <div className="flex-1">
-            <div className="flex items-start justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-slate-800 dark:text-white">{sub.name}</h1>
-                <div className="flex items-center gap-2 mt-1">
+          {/* Logo / Avatar */}
+          {sub.imageUrl ? (
+            <img
+              src={sub.imageUrl}
+              alt={sub.name}
+              className="w-14 h-14 rounded-xl object-cover shrink-0"
+            />
+          ) : (
+            <div
+              className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-xl shrink-0"
+              style={{ backgroundColor: sub.color }}
+            >
+              {sub.name.charAt(0).toUpperCase()}
+            </div>
+          )}
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h1 className="text-xl font-bold text-slate-800 dark:text-white truncate">{sub.name}</h1>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full">{sub.category}</span>
                   {!sub.active && (
                     <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full">Gepauzeerd</span>
                   )}
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setEditing(true)}
-                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                  title="Bewerken"
-                >
-                  <Edit3 className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                </button>
-                <button
-                  onClick={() => setConfirmDelete(true)}
-                  className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                  title="Verwijderen"
-                >
-                  <Trash2 className="w-4 h-4 text-red-400" />
-                </button>
-              </div>
+              {/* Only edit button in header */}
+              <button
+                onClick={() => setEditing(true)}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors shrink-0"
+                title="Bewerken"
+              >
+                <Edit3 className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+              </button>
             </div>
           </div>
         </div>
@@ -110,9 +112,9 @@ export default function SubscriptionDetail() {
         )}
 
         {/* Stats grid */}
-        <div className="grid grid-cols-2 gap-4 mt-6">
+        <div className="grid grid-cols-2 gap-3 mt-4">
           <div className={stat}>
-            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs mb-1">
+            <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-xs mb-1">
               <CreditCard className="w-3.5 h-3.5" />
               Prijs
             </div>
@@ -120,7 +122,7 @@ export default function SubscriptionDetail() {
             <p className="text-xs text-slate-500 dark:text-slate-400">{BILLING_CYCLE_LABELS[sub.billingCycle]}</p>
           </div>
           <div className={stat}>
-            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs mb-1">
+            <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-xs mb-1">
               <Calendar className="w-3.5 h-3.5" />
               Volgende betaling
             </div>
@@ -130,18 +132,18 @@ export default function SubscriptionDetail() {
             </p>
           </div>
           <div className={stat}>
-            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs mb-1">
+            <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-xs mb-1">
               <Clock className="w-3.5 h-3.5" />
-              Sinds
+              Actief sinds
             </div>
-            <p className="text-lg font-bold text-slate-800 dark:text-white">{formatDate(sub.startDate)}</p>
+            <p className="text-base font-bold text-slate-800 dark:text-white">{formatDate(sub.startDate)}</p>
           </div>
           <div className={stat}>
-            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs mb-1">
+            <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-xs mb-1">
               <TrendingUp className="w-3.5 h-3.5" />
               Totaal betaald
             </div>
-            <p className="text-lg font-bold text-slate-800 dark:text-white">{formatCurrency(actualTotal)}</p>
+            <p className="text-base font-bold text-slate-800 dark:text-white">{formatCurrency(actualTotal)}</p>
             <p className="text-xs text-slate-500 dark:text-slate-400">{totalPaid > 0 ? 'Uit transacties' : 'Geschat'}</p>
           </div>
         </div>
@@ -154,15 +156,11 @@ export default function SubscriptionDetail() {
       </div>
 
       {/* Transactions */}
-      <div className={`${card} rounded-xl p-6`}>
-        <h2 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">
-          Transacties ({transactions.length})
-        </h2>
-        {transactions.length === 0 ? (
-          <p className="text-sm text-slate-400 text-center py-6">
-            Nog geen transacties. Importeer een bankafschrift om transacties te koppelen.
-          </p>
-        ) : (
+      {transactions.length > 0 && (
+        <div className={`${card} rounded-xl p-5 mb-4`}>
+          <h2 className="text-base font-semibold text-slate-800 dark:text-white mb-3">
+            Transacties ({transactions.length})
+          </h2>
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {transactions.map(tx => (
               <div key={tx.id} className="flex items-center justify-between py-3">
@@ -176,8 +174,17 @@ export default function SubscriptionDetail() {
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Delete button at bottom */}
+      <button
+        onClick={() => setConfirmDelete(true)}
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-red-200 dark:border-red-900/50 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors text-sm font-medium"
+      >
+        <Trash2 className="w-4 h-4" />
+        Abonnement verwijderen
+      </button>
 
       {/* Delete confirmation */}
       {confirmDelete && (
