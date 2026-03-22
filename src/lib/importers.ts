@@ -92,6 +92,8 @@ function parseCSVRow(row: Record<string, string>, format: CSVFormat): Omit<Trans
     recurring: null,
     source: 'csv',
     raw: JSON.stringify(row),
+    groupId: null,
+    isExpected: 0,
   };
 }
 
@@ -155,6 +157,8 @@ export function parseMT940(content: string): Omit<Transaction, 'id' | 'createdAt
           recurring: null,
           source: 'mt940',
           raw: txLine + (description ? '\n' + description : ''),
+          groupId: null,
+          isExpected: 0,
         });
       }
     }
