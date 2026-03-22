@@ -25,18 +25,22 @@ async function applyStatusBar() {
   }
 }
 
+const NAV_PAGES = ['/', '/subscriptions', '/finance', '/planning', '/account']
+
 function AppInner() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { isFirstLaunch } = useTheme()
   const { profile } = useProfile()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const touchStartX = useRef<number | null>(null)
 
   useEffect(() => {
     applyStatusBar()
     initDatabase()
       .then(async () => {
         setLoading(false)
-        // Request permission and schedule notifications
         const granted = await requestNotificationPermission()
         if (granted) {
           const subs = getAllSubscriptions()
@@ -48,6 +52,22 @@ function AppInner() {
         setLoading(false)
       })
   }, [])
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null) return
+    const delta = e.changedTouches[0].clientX - touchStartX.current
+    touchStartX.current = null
+    if (Math.abs(delta) < 80) return
+    const basePath = '/' + location.pathname.split('/')[1]
+    const idx = NAV_PAGES.indexOf(basePath)
+    if (idx === -1) return
+    if (delta < 0 && idx < NAV_PAGES.length - 1) navigate(NAV_PAGES[idx + 1])
+    if (delta > 0 && idx > 0) navigate(NAV_PAGES[idx - 1])
+  }
 
   if (loading) {
     return (
@@ -69,27 +89,6 @@ function AppInner() {
         </div>
       </div>
     )
-  }
-
-  const navigate = useNavigate()
-  const location = useLocation()
-  const touchStartX = useRef<number | null>(null)
-  const NAV_PAGES = ['/', '/subscriptions', '/finance', '/planning', '/account']
-
-  function handleTouchStart(e: React.TouchEvent) {
-    touchStartX.current = e.touches[0].clientX
-  }
-
-  function handleTouchEnd(e: React.TouchEvent) {
-    if (touchStartX.current === null) return
-    const delta = e.changedTouches[0].clientX - touchStartX.current
-    touchStartX.current = null
-    if (Math.abs(delta) < 80) return
-    const basePath = '/' + location.pathname.split('/')[1]
-    const idx = NAV_PAGES.indexOf(basePath)
-    if (idx === -1) return
-    if (delta < 0 && idx < NAV_PAGES.length - 1) navigate(NAV_PAGES[idx + 1])
-    if (delta > 0 && idx > 0) navigate(NAV_PAGES[idx - 1])
   }
 
   return (
