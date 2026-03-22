@@ -1,7 +1,7 @@
 import type { Subscription } from '../types'
 import { BILLING_CYCLE_LABELS } from '../types'
-import { formatCurrency, formatDate, daysUntilNextPayment, formatDaysUntil, getMonthlyEquivalent } from '../lib/calculations'
-import { Calendar, Clock } from 'lucide-react'
+import { formatCurrency, daysUntilNextPayment, formatDaysUntil } from '../lib/calculations'
+import { Clock } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 interface Props {
@@ -10,54 +10,44 @@ interface Props {
 
 export default function SubscriptionCard({ subscription: sub }: Props) {
   const days = daysUntilNextPayment(sub.nextPaymentDate)
-  const monthly = getMonthlyEquivalent(sub.price, sub.billingCycle)
+  const isUrgent = days <= 3
+  const isSoon = days <= 7
 
   return (
     <Link
       to={`/subscriptions/${sub.id}`}
-      className="block bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all group"
+      className="flex items-center gap-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-3.5 hover:shadow-md transition-all group active:scale-[0.99]"
     >
-      <div className="flex items-start gap-3">
-        <div
-          className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0"
-          style={{ backgroundColor: sub.color }}
-        >
+      {/* Logo */}
+      {sub.imageUrl ? (
+        <img src={sub.imageUrl} alt={sub.name} className="w-11 h-11 rounded-xl object-cover shrink-0" />
+      ) : (
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-base shrink-0"
+          style={{ backgroundColor: sub.color }}>
           {sub.name.charAt(0).toUpperCase()}
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-slate-800 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-              {sub.name}
-            </h3>
-            <span className="text-base font-bold text-slate-800 dark:text-white shrink-0 ml-2">
-              {formatCurrency(sub.price)}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 mt-1 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-            <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{sub.category}</span>
-            <span>{BILLING_CYCLE_LABELS[sub.billingCycle]}</span>
-            {sub.billingCycle !== 'monthly' && (
-              <span className="text-slate-400 dark:text-slate-500">({formatCurrency(monthly)}/mnd)</span>
-            )}
-          </div>
-          <div className="flex items-center gap-4 mt-2 text-xs text-slate-500 dark:text-slate-400">
-            <span className="inline-flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5" />
-              {formatDate(sub.nextPaymentDate)}
-            </span>
-            <span className={`inline-flex items-center gap-1 ${
-              days <= 3 ? 'text-red-500 font-medium' : days <= 7 ? 'text-amber-500' : ''
-            }`}>
-              <Clock className="w-3.5 h-3.5" />
-              {formatDaysUntil(days)}
-            </span>
-          </div>
+      )}
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <h3 className="font-semibold text-slate-800 dark:text-white truncate text-sm">{sub.name}</h3>
           {!sub.active && (
-            <span className="inline-block mt-2 text-xs bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-full">
-              Gepauzeerd
-            </span>
+            <span className="text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-500 px-1.5 py-0.5 rounded-full shrink-0">Gepauzeerd</span>
           )}
         </div>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className="text-xs text-slate-400">{sub.category}</span>
+          <span className="text-slate-300 dark:text-slate-600">·</span>
+          <span className={`text-xs font-medium flex items-center gap-0.5 ${isUrgent ? 'text-red-500' : isSoon ? 'text-amber-500' : 'text-slate-400'}`}>
+            <Clock className="w-3 h-3" />
+            {formatDaysUntil(days)}
+          </span>
+        </div>
+      </div>
+
+      <div className="text-right shrink-0">
+        <p className="text-sm font-bold text-slate-800 dark:text-white">{formatCurrency(sub.price)}</p>
+        <p className="text-xs text-slate-400">{BILLING_CYCLE_LABELS[sub.billingCycle]}</p>
       </div>
     </Link>
   )

@@ -47,7 +47,7 @@ export default function SubscriptionDetail() {
   const actualTotal = totalPaid > 0 ? totalPaid : estimateTotalPaid(sub)
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-lg mx-auto">
       {/* Header */}
       <button
         onClick={() => navigate('/subscriptions')}
@@ -86,14 +86,22 @@ export default function SubscriptionDetail() {
                   )}
                 </div>
               </div>
-              {/* Only edit button in header */}
-              <button
-                onClick={() => setEditing(true)}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors shrink-0"
-                title="Bewerken"
-              >
-                <Edit3 className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-              </button>
+              <div className="flex gap-1 shrink-0">
+                <button
+                  onClick={() => setEditing(true)}
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  title="Bewerken"
+                >
+                  <Edit3 className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                  title="Verwijderen"
+                >
+                  <Trash2 className="w-4 h-4 text-red-400" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -176,15 +184,6 @@ export default function SubscriptionDetail() {
           </div>
         </div>
       )}
-
-      {/* Delete button at bottom */}
-      <button
-        onClick={() => setConfirmDelete(true)}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-red-200 dark:border-red-900/50 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors text-sm font-medium"
-      >
-        <Trash2 className="w-4 h-4" />
-        Abonnement verwijderen
-      </button>
 
       {/* Delete confirmation */}
       {confirmDelete && (

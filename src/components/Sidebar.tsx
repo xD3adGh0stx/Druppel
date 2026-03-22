@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, CreditCard, PiggyBank, User } from 'lucide-react'
+import { LayoutDashboard, CreditCard, PiggyBank, User, CalendarDays } from 'lucide-react'
 import { useProfile } from '../context/ProfileContext'
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/subscriptions', icon: CreditCard, label: 'Abonnementen' },
   { to: '/finance', icon: PiggyBank, label: 'Financiën' },
+  { to: '/planning', icon: CalendarDays, label: 'Planning' },
 ]
 
 function Avatar({ size = 'sm' }: { size?: 'sm' | 'md' }) {

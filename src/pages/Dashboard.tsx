@@ -1,41 +1,49 @@
 import { useState, useEffect, useMemo } from 'react'
-import { getAllSubscriptions, computeMonthlyTotal } from '../lib/database'
+import { getAllSubscriptions, computeMonthlyTotal, getMonthlyStats } from '../lib/database'
 import type { Subscription } from '../types'
-import { formatCurrency, daysUntilNextPayment, estimateTotalPaid, getMonthlyEquivalent } from '../lib/calculations'
-import { TrendingUp, CreditCard, Calendar, AlertTriangle } from 'lucide-react'
+import { formatCurrency, daysUntilNextPayment, getMonthlyEquivalent } from '../lib/calculations'
+import { TrendingUp, TrendingDown, CreditCard, Calendar, AlertTriangle } from 'lucide-react'
 import SubscriptionCard from '../components/SubscriptionCard'
+
+const NL_DAYS = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag']
+const NL_MONTHS = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december']
 
 export default function Dashboard() {
   const [subs, setSubs] = useState<Subscription[]>([])
+  const [monthlyStats, setMonthlyStats] = useState({ income: 0, expenses: 0 })
+  const now = new Date()
 
   useEffect(() => {
     setSubs(getAllSubscriptions())
+    setMonthlyStats(getMonthlyStats(now.getFullYear(), now.getMonth() + 1))
   }, [])
 
-  const { activeSubs, monthlyTotal, yearlyTotal, totalEverPaid, upcoming, urgentCount } = useMemo(() => {
+  const { activeSubs, monthlyTotal, upcoming, urgentCount } = useMemo(() => {
     const activeSubs = subs.filter(s => s.active)
     const monthlyTotal = computeMonthlyTotal(subs)
-    const yearlyTotal = monthlyTotal * 12
-    const totalEverPaid = subs.reduce((sum, s) => sum + estimateTotalPaid(s), 0)
     const upcoming = [...activeSubs]
       .sort((a, b) => daysUntilNextPayment(a.nextPaymentDate) - daysUntilNextPayment(b.nextPaymentDate))
       .slice(0, 5)
     const urgentCount = activeSubs.filter(s => daysUntilNextPayment(s.nextPaymentDate) <= 7).length
-    return { activeSubs, monthlyTotal, yearlyTotal, totalEverPaid, upcoming, urgentCount }
+    return { activeSubs, monthlyTotal, upcoming, urgentCount }
   }, [subs])
 
+  const dateLabel = `${NL_DAYS[now.getDay()]} ${now.getDate()} ${NL_MONTHS[now.getMonth()]} ${now.getFullYear()}`
+
   const stats = [
-    { label: 'Maandelijks', value: formatCurrency(monthlyTotal), icon: CreditCard, color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
-    { label: 'Jaarlijks', value: formatCurrency(yearlyTotal), icon: TrendingUp, color: 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400' },
+    { label: 'Abonnementen/mnd', value: formatCurrency(monthlyTotal), icon: CreditCard, color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
     { label: 'Actieve abonnementen', value: activeSubs.length.toString(), icon: Calendar, color: 'bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' },
-    { label: 'Totaal betaald (geschat)', value: formatCurrency(totalEverPaid), icon: TrendingUp, color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' },
+    { label: 'Inkomsten deze maand', value: formatCurrency(monthlyStats.income), icon: TrendingUp, color: 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400' },
+    { label: 'Uitgaven deze maand', value: formatCurrency(monthlyStats.expenses), icon: TrendingDown, color: 'bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400' },
   ]
 
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Dashboard</h1>
-        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Overzicht van je abonnementen</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Dashboard</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{dateLabel}</p>
+        </div>
       </div>
 
       {/* Stats */}

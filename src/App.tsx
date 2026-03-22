@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { initDatabase, getAllSubscriptions } from './lib/database'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
 import { ProfileProvider, useProfile } from './context/ProfileContext'
@@ -12,6 +12,7 @@ import SubscriptionDetail from './pages/SubscriptionDetail'
 import ImportPage from './pages/ImportPage'
 import FinancePage from './pages/FinancePage'
 import AccountPage from './pages/AccountPage'
+import PlanningPage from './pages/PlanningPage'
 import { Loader2 } from 'lucide-react'
 import { StatusBar, Style } from '@capacitor/status-bar'
 
@@ -70,17 +71,40 @@ function AppInner() {
     )
   }
 
+  const navigate = useNavigate()
+  const location = useLocation()
+  const touchStartX = useRef<number | null>(null)
+  const NAV_PAGES = ['/', '/subscriptions', '/finance', '/planning', '/account']
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null) return
+    const delta = e.changedTouches[0].clientX - touchStartX.current
+    touchStartX.current = null
+    if (Math.abs(delta) < 80) return
+    const basePath = '/' + location.pathname.split('/')[1]
+    const idx = NAV_PAGES.indexOf(basePath)
+    if (idx === -1) return
+    if (delta < 0 && idx < NAV_PAGES.length - 1) navigate(NAV_PAGES[idx + 1])
+    if (delta > 0 && idx > 0) navigate(NAV_PAGES[idx - 1])
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950"
       style={{ paddingTop: 'env(safe-area-inset-top, 24px)' }}>
       {isFirstLaunch && <WelcomeModal />}
       <Sidebar />
-      <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6">
+      <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6"
+        onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/subscriptions" element={<Subscriptions />} />
           <Route path="/subscriptions/:id" element={<SubscriptionDetail />} />
           <Route path="/finance" element={<FinancePage />} />
+          <Route path="/planning" element={<PlanningPage />} />
           <Route path="/import" element={<ImportPage />} />
           <Route path="/account" element={<AccountPage />} />
         </Routes>

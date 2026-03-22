@@ -90,6 +90,8 @@ function parseCSVRow(row: Record<string, string>, format: CSVFormat): Omit<Trans
     potId: null,
     subscriptionId: null,
     recurring: null,
+    groupId: null,
+    isExpected: 0,
     source: 'csv',
     raw: JSON.stringify(row),
   };
@@ -153,6 +155,8 @@ export function parseMT940(content: string): Omit<Transaction, 'id' | 'createdAt
           potId: null,
           subscriptionId: null,
           recurring: null,
+          groupId: null,
+          isExpected: 0,
           source: 'mt940',
           raw: txLine + (description ? '\n' + description : ''),
         });
