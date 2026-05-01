@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react'
-import type { Subscription, BillingCycle } from '../types'
-import { CATEGORIES, BILLING_CYCLE_LABELS, COLORS } from '../types'
-import { calculateNextPaymentDate } from '../lib/calculations'
+import type { Subscription, BillingCycle } from '../../types'
+import { CATEGORIES, BILLING_CYCLE_LABELS, COLORS } from '../../types'
+import { calculateNextPaymentDate } from '../../lib/calculations'
 import { X, Globe, Search, Camera, ChevronDown, Check } from 'lucide-react'
 
 interface Props {

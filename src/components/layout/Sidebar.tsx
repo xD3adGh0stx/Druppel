@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { LayoutDashboard, CreditCard, PiggyBank, User } from 'lucide-react'
-import { useProfile } from '../context/ProfileContext'
+import { useProfile } from '../../context/ProfileContext'
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },

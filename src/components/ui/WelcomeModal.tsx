@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useTheme } from '../context/ThemeContext'
+import { useTheme } from '../../context/ThemeContext'
 import { Sun, Moon } from 'lucide-react'
 
 export default function WelcomeModal() {

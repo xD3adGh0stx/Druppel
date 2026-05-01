@@ -3,7 +3,7 @@ import { getAllSubscriptions, computeMonthlyTotal } from '../lib/database'
 import type { Subscription } from '../types'
 import { formatCurrency, daysUntilNextPayment, estimateTotalPaid, getMonthlyEquivalent } from '../lib/calculations'
 import { TrendingUp, CreditCard, Calendar, AlertTriangle } from 'lucide-react'
-import SubscriptionCard from '../components/SubscriptionCard'
+import SubscriptionCard from '../components/subscriptions/SubscriptionCard'
 
 export default function Dashboard() {
   const [subs, setSubs] = useState<Subscription[]>([])

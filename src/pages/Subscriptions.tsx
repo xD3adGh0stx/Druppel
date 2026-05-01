@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getAllSubscriptions, addSubscription } from '../lib/database'
 import type { Subscription } from '../types'
-import SubscriptionCard from '../components/SubscriptionCard'
-import SubscriptionForm from '../components/SubscriptionForm'
+import SubscriptionCard from '../components/subscriptions/SubscriptionCard'
+import SubscriptionForm from '../components/subscriptions/SubscriptionForm'
 import { calculateNextPaymentDate, daysUntilNextPayment, getMonthlyEquivalent } from '../lib/calculations'
 import { Plus, Search, ArrowUpDown } from 'lucide-react'
 

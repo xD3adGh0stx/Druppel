@@ -7,7 +7,7 @@ import {
 import type { Subscription, Transaction } from '../types'
 import { BILLING_CYCLE_LABELS } from '../types'
 import { formatCurrency, formatDate, daysUntilNextPayment, formatDaysUntil, estimateTotalPaid } from '../lib/calculations'
-import SubscriptionForm from '../components/SubscriptionForm'
+import SubscriptionForm from '../components/subscriptions/SubscriptionForm'
 import { ArrowLeft, Edit3, Trash2, Calendar, Clock, CreditCard, TrendingUp, Globe } from 'lucide-react'
 
 const card = 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800'

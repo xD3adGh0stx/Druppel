@@ -1,6 +1,6 @@
-import type { Subscription } from '../types'
-import { BILLING_CYCLE_LABELS } from '../types'
-import { formatCurrency, formatDate, daysUntilNextPayment, formatDaysUntil, getMonthlyEquivalent } from '../lib/calculations'
+import type { Subscription } from '../../types'
+import { BILLING_CYCLE_LABELS } from '../../types'
+import { formatCurrency, formatDate, daysUntilNextPayment, formatDaysUntil, getMonthlyEquivalent } from '../../lib/calculations'
 import { Calendar, Clock } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
