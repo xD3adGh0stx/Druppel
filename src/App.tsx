@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
-import { initDatabase, getAllSubscriptions } from './lib/database'
+import { initDatabase, getAllSubscriptions, refreshStalePaymentDates } from './lib/database'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
 import { ProfileProvider, useProfile } from './context/ProfileContext'
 import { requestNotificationPermission, schedulePaymentNotifications } from './lib/notifications'
@@ -20,7 +20,7 @@ async function applyStatusBar() {
     await StatusBar.setOverlaysWebView({ overlay: true })
     await StatusBar.setStyle({ style: Style.Light })
   } catch {
-    // Not on native platform, no-op
+    // Geen native platform, niets doen
   }
 }
 
@@ -34,8 +34,8 @@ function AppInner() {
     applyStatusBar()
     initDatabase()
       .then(async () => {
+        refreshStalePaymentDates()
         setLoading(false)
-        // Request permission and schedule notifications
         const granted = await requestNotificationPermission()
         if (granted) {
           const subs = getAllSubscriptions()

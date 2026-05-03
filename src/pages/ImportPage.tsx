@@ -252,7 +252,7 @@ export default function ImportPage() {
             </div>
           </div>
           <div className="space-y-2">
-            {transactions.map((tx, i) => ({ tx, i })).filter(({ tx }) => tx.amount < 0).slice(0, 100).map(({ tx, i }) => {
+            {transactions.map((tx, i) => ({ tx, i })).filter(({ tx }) => tx.amount < 0).map(({ tx, i }) => {
               const matched = subscriptions.find(s => s.id === tx.subscriptionId)
               return (
                 <div key={i} className={`${card} rounded-lg px-4 py-3 flex items-center gap-4`}>

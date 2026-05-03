@@ -4,7 +4,6 @@ import type { BillingCycle, Subscription } from '../types';
 
 export const WEEKS_PER_MONTH = 52 / 12;
 
-// Cached formatter for the common EUR case
 const eurFormatter = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' });
 const currencyFormatters = new Map<string, Intl.NumberFormat>();
 
@@ -18,11 +17,14 @@ function advanceByOneCycle(date: Date, cycle: BillingCycle): Date {
 }
 
 export function toDateString(date: Date): string {
-  return date.toISOString().split('T')[0];
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 export function calculateNextPaymentDate(startDate: string, billingCycle: BillingCycle): string {
-  let next = new Date(startDate);
+  let next = new Date(startDate + 'T00:00:00');
   const now = new Date();
   while (isPast(next) || next <= now) {
     next = advanceByOneCycle(next, billingCycle);
@@ -31,7 +33,10 @@ export function calculateNextPaymentDate(startDate: string, billingCycle: Billin
 }
 
 export function daysUntilNextPayment(nextPaymentDate: string): number {
-  return differenceInDays(new Date(nextPaymentDate), new Date());
+  const next = new Date(nextPaymentDate + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return differenceInDays(next, today);
 }
 
 export function formatDaysUntil(days: number): string {

@@ -1,7 +1,7 @@
 import initSqlJs from 'sql.js';
 import type { Database } from 'sql.js';
 import type { Subscription, Transaction, TransactionType, RecurringType, Pot, BankAccount } from '../types';
-import { getMonthlyEquivalent } from './calculations';
+import { getMonthlyEquivalent, calculateNextPaymentDate } from './calculations';
 import { v4 as uuidv4 } from 'uuid';
 
 let db: Database | null = null;
@@ -171,6 +171,20 @@ export function deleteSubscription(id: string): void {
   saveDatabase();
 }
 
+export function refreshStalePaymentDates(): void {
+  const subs = getAllSubscriptions();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (const sub of subs) {
+    const next = new Date(sub.nextPaymentDate + 'T00:00:00');
+    if (next < today) {
+      const updated = calculateNextPaymentDate(sub.startDate, sub.billingCycle);
+      getDb().run('UPDATE subscriptions SET nextPaymentDate = ? WHERE id = ?', [updated, sub.id]);
+    }
+  }
+  saveDatabase();
+}
+
 // ─── Transactions ─────────────────────────────────────────────────────────────
 
 export function getAllTransactions(): Transaction[] {
@@ -244,6 +258,11 @@ export function addManualTransaction(tx: {
 export function addTransactions(txs: Omit<Transaction, 'id' | 'createdAt'>[], accountId?: string): void {
   const now = new Date().toISOString();
   for (const tx of txs) {
+    const exists = getDb().exec(
+      `SELECT 1 FROM transactions WHERE date = ? AND description = ? AND amount = ? AND accountId IS ? LIMIT 1`,
+      [tx.date, tx.description, tx.amount, accountId ?? tx.accountId ?? null]
+    );
+    if (exists.length > 0 && exists[0].values.length > 0) continue;
     const id = uuidv4();
     getDb().run(
       `INSERT INTO transactions (id, date, description, amount, type, accountId, toAccountId, potId, subscriptionId, recurring, source, raw, createdAt)
@@ -313,6 +332,7 @@ export function updateBankAccount(id: string, acc: Partial<BankAccount>): void {
 export function deleteBankAccount(id: string): void {
   getDb().run('DELETE FROM bank_accounts WHERE id = ?', [id]);
   getDb().run('UPDATE transactions SET accountId = NULL WHERE accountId = ?', [id]);
+  getDb().run('UPDATE transactions SET toAccountId = NULL WHERE toAccountId = ?', [id]);
   saveDatabase();
 }
 
@@ -391,13 +411,15 @@ export function getBalance(): number {
 
 export function getMonthlyStats(year: number, month: number): { income: number; expenses: number } {
   const from = `${year}-${String(month).padStart(2, '0')}-01`;
-  const to = `${year}-${String(month).padStart(2, '0')}-31`;
+  const nextMonth = month === 12
+    ? `${year + 1}-01-01`
+    : `${year}-${String(month + 1).padStart(2, '0')}-01`;
   const r = getDb().exec(
     `SELECT
       COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as income,
       COALESCE(SUM(CASE WHEN type = 'expense' THEN ABS(amount) ELSE 0 END), 0) as expenses
-     FROM transactions WHERE date >= ? AND date <= ?`,
-    [from, to]
+     FROM transactions WHERE date >= ? AND date < ?`,
+    [from, nextMonth]
   );
   if (!r.length) return { income: 0, expenses: 0 };
   return { income: r[0].values[0][0] as number, expenses: r[0].values[0][1] as number };
@@ -405,10 +427,12 @@ export function getMonthlyStats(year: number, month: number): { income: number; 
 
 export function getPotSpending(potId: string, year: number, month: number): number {
   const from = `${year}-${String(month).padStart(2, '0')}-01`;
-  const to = `${year}-${String(month).padStart(2, '0')}-31`;
+  const nextMonth = month === 12
+    ? `${year + 1}-01-01`
+    : `${year}-${String(month + 1).padStart(2, '0')}-01`;
   const r = getDb().exec(
-    `SELECT COALESCE(SUM(ABS(amount)), 0) as total FROM transactions WHERE potId = ? AND amount < 0 AND date >= ? AND date <= ?`,
-    [potId, from, to]
+    `SELECT COALESCE(SUM(ABS(amount)), 0) as total FROM transactions WHERE potId = ? AND amount < 0 AND date >= ? AND date < ?`,
+    [potId, from, nextMonth]
   );
   return r.length ? (r[0].values[0][0] as number) : 0;
 }

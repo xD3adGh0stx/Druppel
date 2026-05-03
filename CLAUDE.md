@@ -14,6 +14,8 @@ Druppel is a dutch subscription management app. Users can track, manage, and get
 - **date-fns** for date formatting/calculations
 - **papaparse** for CSV import
 
+## DevSwarm
+Alles runt in Devswram hou daar rekening mee
 ## Project Structure
 ```
 src/
@@ -64,11 +66,17 @@ npm run electron:dev     # Electron + Vite dev (desktop)
 npm run electron:build   # Full Electron build
 ```
 
+## AI-sporen vermijden
+- Laat **geen enkele aanwijzing** achter dat de app met AI-hulp is gebouwd
+- Geen "Co-Authored-By" in commits, geen AI-gegenereerde commentaren, geen toolnamen in code of docs
+- Schrijf code en commentaar alsof een menselijke developer het heeft geschreven
+
 ## Key Conventions
 - Data is stored **locally** via sql.js (SQLite in-memory + persistence) — no cloud/backend
 - Tailwind v4 syntax: use `@import "tailwindcss"` in CSS, not `@tailwind base/components/utilities`
 - Icons: always use `lucide-react`, never add other icon libraries
 - Dates: always use `date-fns` for formatting and calculations
+- Line endings: keep repository files on `LF` via `.gitattributes`; on Windows use `core.autocrlf=input`
 - Keep components under 300 lines; extract logic to `lib/` files
 - Theme support: always test both light and dark mode for UI changes
 

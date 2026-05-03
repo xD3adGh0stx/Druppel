@@ -5,11 +5,9 @@ import { Sun, Moon } from 'lucide-react'
 export default function WelcomeModal() {
   const { setTheme, dismissWelcome } = useTheme()
 
-  // Pre-select based on system dark mode preference
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
   const [selected, setSelected] = useState<'light' | 'dark'>(prefersDark ? 'dark' : 'light')
 
-  // Apply theme preview live as user hovers/selects
   function handleSelect(theme: 'light' | 'dark') {
     setSelected(theme)
     setTheme(theme) // live preview

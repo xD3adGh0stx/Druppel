@@ -19,14 +19,14 @@ export interface Subscription {
 }
 
 export const CATEGORIES = [
-  // Entertainment
+  // Vermaak
   'Streaming video',
   'Streaming muziek',
   'Gaming',
   'Podcasts & Audio',
   'Boeken & E-readers',
   'Sport & Fitness',
-  // Software & Tech
+  // Software & Technologie
   'Software & Apps',
   'Cloud opslag',
   'VPN & Beveiliging',
