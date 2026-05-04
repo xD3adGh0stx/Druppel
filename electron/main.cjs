@@ -4,15 +4,20 @@ const path = require('path');
 let mainWindow;
 
 function createWindow() {
+  const preloadPath = path.join(__dirname, 'preload.cjs');
+  const fs = require('fs');
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 900,
     minHeight: 600,
     title: 'Druppel',
+    icon: path.join(__dirname, '..', 'public', 'icon.ico'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      preload: fs.existsSync(preloadPath) ? preloadPath : undefined,
     },
     autoHideMenuBar: true,
     show: false,
