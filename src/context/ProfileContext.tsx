@@ -4,10 +4,11 @@ export interface Profile {
   name: string
   email: string
   avatarColor: string
-  notifyDays: number[]  // days before payment to send notification
+  notifyDays: number[]
+  tutorialVersion: number
 }
 
-const DEFAULTS: Profile = { name: '', email: '', avatarColor: '#3B82F6', notifyDays: [1, 3] }
+const DEFAULTS: Profile = { name: '', email: '', avatarColor: '#3B82F6', notifyDays: [1, 3], tutorialVersion: 0 }
 const KEY = 'druppel_profile'
 
 interface ProfileContextValue {
