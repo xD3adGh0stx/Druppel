@@ -402,11 +402,7 @@ function AccountDetail({ account, accounts, pots, onBack, onReload }: {
   useEffect(() => { load() }, [account.id])
 
   function handleDelete(id: string) {
-<<<<<<< HEAD
-    if (!confirm('Transactie verwijderen?')) return
-=======
     if (!confirm('Transactie verwijderen? Bij overboekingen en potjes worden beide kanten teruggedraaid.')) return
->>>>>>> ea445edc2593d07d3fb45e29987e996939d2cfff
     deleteTransactionWithGroup(id); load(); onReload()
   }
 
