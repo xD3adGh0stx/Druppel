@@ -28,6 +28,10 @@ android/app/build/
 android/build/
 android/.gradle/
 android/local.properties
+android/gradle.properties
+
+# Signing
+druppel-release.keystore
 
 # Logo source files
 logo_druppel*.png
