@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useProfile } from '../context/ProfileContext'
+import { getAllSubscriptions } from '../lib/database'
+import { schedulePaymentNotifications } from '../lib/notifications'
 import { COLORS } from '../types'
 import { Sun, Moon, User, Mail, Palette, Bell, Info, Plus, X } from 'lucide-react'
 
@@ -16,6 +18,11 @@ export default function AccountPage() {
   const [name, setName] = useState(profile.name)
   const [email, setEmail] = useState(profile.email)
   const [saved, setSaved] = useState(false)
+
+  function handleNotifyDaysChange(newDays: number[]) {
+    saveProfile({ notifyDays: newDays })
+    schedulePaymentNotifications(getAllSubscriptions(), newDays).catch(() => {})
+  }
 
   const initials = name.trim()
     ? name.trim().split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
@@ -161,7 +168,7 @@ export default function AccountPage() {
             <div key={day} className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-3 py-1.5 rounded-full text-sm font-medium">
               {day} {day === 1 ? 'dag' : 'dagen'} van tevoren
               <button
-                onClick={() => saveProfile({ notifyDays: profile.notifyDays.filter(d => d !== day) })}
+                onClick={() => handleNotifyDaysChange(profile.notifyDays.filter(d => d !== day))}
                 className="ml-1 hover:text-red-500 transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
@@ -177,7 +184,7 @@ export default function AccountPage() {
           {[1, 2, 3, 5, 7, 14].filter(d => !profile.notifyDays.includes(d)).map(day => (
             <button
               key={day}
-              onClick={() => saveProfile({ notifyDays: [...profile.notifyDays, day].sort((a, b) => a - b) })}
+              onClick={() => handleNotifyDaysChange([...profile.notifyDays, day].sort((a, b) => a - b))}
               className="flex items-center gap-1 px-2.5 py-1.5 border border-dashed border-slate-300 dark:border-slate-700 rounded-full text-xs text-slate-500 dark:text-slate-400 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             >
               <Plus className="w-3 h-3" />{day}d

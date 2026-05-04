@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react'
-import type { Subscription, BillingCycle } from '../types'
-import { CATEGORIES, BILLING_CYCLE_LABELS, COLORS } from '../types'
-import { calculateNextPaymentDate } from '../lib/calculations'
+import type { Subscription, BillingCycle } from '../../types'
+import { CATEGORIES, BILLING_CYCLE_LABELS, COLORS } from '../../types'
+import { calculateNextPaymentDate } from '../../lib/calculations'
 import { X, Globe, Search, Camera, ChevronDown, Check } from 'lucide-react'
 
 interface Props {
@@ -23,22 +23,21 @@ function CategoryPicker({ value, onChange }: { value: string; onChange: (v: stri
     return (CATEGORIES as readonly string[]).filter(c => c.toLowerCase().includes(q))
   }, [search])
 
-  // Group categories by type
   const groups: Record<string, string[]> = {}
   filtered.forEach(cat => {
     const groupMap: Record<string, string> = {
-      'Streaming video': 'Entertainment',
-      'Streaming muziek': 'Entertainment',
-      'Gaming': 'Entertainment',
-      'Podcasts & Audio': 'Entertainment',
-      'Boeken & E-readers': 'Entertainment',
-      'Sport & Fitness': 'Entertainment',
-      'Software & Apps': 'Software & Tech',
-      'Cloud opslag': 'Software & Tech',
-      'VPN & Beveiliging': 'Software & Tech',
-      'AI & Productiviteit': 'Software & Tech',
-      'Webhosting': 'Software & Tech',
-      'Developer tools': 'Software & Tech',
+      'Streaming video': 'Vermaak',
+      'Streaming muziek': 'Vermaak',
+      'Gaming': 'Vermaak',
+      'Podcasts & Audio': 'Vermaak',
+      'Boeken & E-readers': 'Vermaak',
+      'Sport & Fitness': 'Vermaak',
+      'Software & Apps': 'Software & Technologie',
+      'Cloud opslag': 'Software & Technologie',
+      'VPN & Beveiliging': 'Software & Technologie',
+      'AI & Productiviteit': 'Software & Technologie',
+      'Webhosting': 'Software & Technologie',
+      'Developer tools': 'Software & Technologie',
       'Telefoon': 'Communicatie',
       'Internet': 'Communicatie',
       'Nieuwsbrief': 'Communicatie',

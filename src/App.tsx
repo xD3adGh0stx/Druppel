@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
-import { initDatabase, getAllSubscriptions } from './lib/database'
+import { initDatabase, getAllSubscriptions, refreshStalePaymentDates } from './lib/database'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
 import { ProfileProvider, useProfile } from './context/ProfileContext'
 import { requestNotificationPermission, schedulePaymentNotifications } from './lib/notifications'
-import Sidebar from './components/Sidebar'
-import WelcomeModal from './components/WelcomeModal'
+import Sidebar from './components/layout/Sidebar'
+import WelcomeModal from './components/ui/WelcomeModal'
 import Dashboard from './pages/Dashboard'
 import Subscriptions from './pages/Subscriptions'
 import SubscriptionDetail from './pages/SubscriptionDetail'
@@ -20,7 +20,7 @@ async function applyStatusBar() {
     await StatusBar.setOverlaysWebView({ overlay: true })
     await StatusBar.setStyle({ style: Style.Light })
   } catch {
-    // Not on native platform, no-op
+    // Geen native platform, niets doen
   }
 }
 
@@ -33,20 +33,24 @@ function AppInner() {
   useEffect(() => {
     applyStatusBar()
     initDatabase()
-      .then(async () => {
+      .then(() => {
+        refreshStalePaymentDates()
         setLoading(false)
-        // Request permission and schedule notifications
-        const granted = await requestNotificationPermission()
-        if (granted) {
-          const subs = getAllSubscriptions()
-          await schedulePaymentNotifications(subs, profile.notifyDays)
-        }
       })
       .catch(err => {
         setError(err.message)
         setLoading(false)
       })
   }, [])
+
+  useEffect(() => {
+    if (loading) return
+    requestNotificationPermission().then(granted => {
+      if (granted) {
+        schedulePaymentNotifications(getAllSubscriptions(), profile.notifyDays)
+      }
+    })
+  }, [loading, profile.notifyDays])
 
   if (loading) {
     return (

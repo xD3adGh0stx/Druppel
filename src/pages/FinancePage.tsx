@@ -3,7 +3,7 @@ import {
   getAllPots, addPot, updatePot, deletePot, getPotBalance,
   getMonthlyStats,
   getAllBankAccounts, addBankAccount, updateBankAccount, deleteBankAccount, getAccountBalance,
-  addManualTransaction, getTransactionsForAccount, deleteTransaction,
+  addManualTransaction, getTransactionsForAccount, deleteTransactionWithGroup,
 } from '../lib/database'
 import type { Pot, Transaction, BankAccount, AccountType, TransactionType, RecurringType } from '../types'
 import { COLORS } from '../types'
@@ -196,6 +196,8 @@ function ActionForm({ accounts, pots, defaultAccountId, onSubmit, onCancel }: {
     e.preventDefault()
     const amt = parseFloat(amount.replace(',', '.'))
     if (!amt || amt <= 0) return
+    if (type === 'transfer' && (!toAccountId || toAccountId === accountId)) return
+    if (type === 'pot_allocation' && !potId) return
     addManualTransaction({
       type, date,
       description: description || TX_TYPES.find(t => t.type === type)!.label,
@@ -320,7 +322,7 @@ function AccountDetail({ account, accounts, pots, onBack, onReload }: {
 
   function handleDelete(id: string) {
     if (!confirm('Transactie verwijderen?')) return
-    deleteTransaction(id); load(); onReload()
+    deleteTransactionWithGroup(id); load(); onReload()
   }
 
   return (

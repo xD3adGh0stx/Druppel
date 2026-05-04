@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getAllSubscriptions, addSubscription } from '../lib/database'
 import type { Subscription } from '../types'
-import SubscriptionCard from '../components/SubscriptionCard'
-import SubscriptionForm from '../components/SubscriptionForm'
-import { calculateNextPaymentDate, daysUntilNextPayment, getMonthlyEquivalent } from '../lib/calculations'
+import SubscriptionCard from '../components/subscriptions/SubscriptionCard'
+import SubscriptionForm from '../components/subscriptions/SubscriptionForm'
+import { getMonthlyEquivalent } from '../lib/calculations'
 import { Plus, Search, ArrowUpDown } from 'lucide-react'
 
 type SortOption = 'name' | 'price-asc' | 'price-desc' | 'next-payment' | 'newest'
@@ -41,11 +41,8 @@ export default function Subscriptions() {
         case 'name': return a.name.localeCompare(b.name)
         case 'price-asc': return getMonthlyEquivalent(a.price, a.billingCycle) - getMonthlyEquivalent(b.price, b.billingCycle)
         case 'price-desc': return getMonthlyEquivalent(b.price, b.billingCycle) - getMonthlyEquivalent(a.price, a.billingCycle)
-        case 'next-payment': {
-          const dA = daysUntilNextPayment(calculateNextPaymentDate(a.startDate, a.billingCycle))
-          const dB = daysUntilNextPayment(calculateNextPaymentDate(b.startDate, b.billingCycle))
-          return dA - dB
-        }
+        case 'next-payment':
+          return a.nextPaymentDate.localeCompare(b.nextPaymentDate)
         case 'newest': return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       }
     })

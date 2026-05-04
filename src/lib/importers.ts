@@ -1,7 +1,6 @@
 import Papa from 'papaparse';
 import type { Transaction, Subscription } from '../types';
 
-// CSV Import - supports ING, Rabobank, ABN AMRO formats
 export function parseCSV(content: string): Omit<Transaction, 'id' | 'createdAt'>[] {
   const result = Papa.parse(content, {
     header: true,
@@ -10,7 +9,7 @@ export function parseCSV(content: string): Omit<Transaction, 'id' | 'createdAt'>
   });
 
   if (result.errors.length > 0 && result.data.length === 0) {
-    throw new Error(`CSV parse error: ${result.errors[0].message}`);
+    throw new Error(`CSV-parsefout: ${result.errors[0].message}`);
   }
 
   const rows = result.data as Record<string, string>[];
@@ -64,7 +63,6 @@ function parseCSVRow(row: Record<string, string>, format: CSVFormat): Omit<Trans
       break;
     }
     default: {
-      // Try common column names
       date = parseDate(
         normalized['date'] || normalized['datum'] || normalized['boekdatum'] ||
         normalized['transactiedatum'] || Object.values(normalized)[0]
@@ -98,18 +96,15 @@ function parseCSVRow(row: Record<string, string>, format: CSVFormat): Omit<Trans
 function parseDate(dateStr: string): string {
   if (!dateStr) return '';
 
-  // Try YYYYMMDD format
   if (/^\d{8}$/.test(dateStr)) {
     return `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`;
   }
 
-  // Try DD-MM-YYYY or DD/MM/YYYY
   const match = dateStr.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
   if (match) {
     return `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`;
   }
 
-  // Try YYYY-MM-DD (ISO)
   if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
     return dateStr.slice(0, 10);
   }
@@ -117,7 +112,6 @@ function parseDate(dateStr: string): string {
   return dateStr;
 }
 
-// MT940 Import
 export function parseMT940(content: string): Omit<Transaction, 'id' | 'createdAt'>[] {
   const transactions: Omit<Transaction, 'id' | 'createdAt'>[] = [];
   const lines = content.split('\n');
@@ -126,17 +120,14 @@ export function parseMT940(content: string): Omit<Transaction, 'id' | 'createdAt
   while (i < lines.length) {
     const line = lines[i].trim();
 
-    // :61: is the transaction line in MT940
     if (line.startsWith(':61:')) {
       const txLine = line.substring(4);
       const tx = parseMT940Transaction(txLine);
 
-      // Look for :86: description on next lines
       let description = '';
       if (i + 1 < lines.length && lines[i + 1].trim().startsWith(':86:')) {
         description = lines[i + 1].trim().substring(4);
         i++;
-        // Description can span multiple lines until next tag
         while (i + 1 < lines.length && !lines[i + 1].trim().startsWith(':')) {
           description += ' ' + lines[i + 1].trim();
           i++;
@@ -165,7 +156,6 @@ export function parseMT940(content: string): Omit<Transaction, 'id' | 'createdAt
 }
 
 function parseMT940Transaction(line: string): { date: string; amount: number; description: string } | null {
-  // MT940 :61: format: YYMMDD[MMDD]CD[amount]
   const match = line.match(/^(\d{6})(\d{4})?(C|D|RC|RD)(\d+[,.]?\d*)/);
   if (!match) return null;
 
@@ -179,7 +169,6 @@ function parseMT940Transaction(line: string): { date: string; amount: number; de
   const amountStr = match[4].replace(',', '.');
   let amount = parseFloat(amountStr);
 
-  // D = Debit (outgoing), C = Credit (incoming)
   if (direction === 'D' || direction === 'RD') {
     amount = -amount;
   }
@@ -187,10 +176,7 @@ function parseMT940Transaction(line: string): { date: string; amount: number; de
   return { date, amount, description: '' };
 }
 
-// PDF Import - basic text extraction
 export async function parsePDF(file: File): Promise<string> {
-  // For PDF, we extract text and return it for the user to review
-  // In a production app, you'd use pdf.js or similar
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -203,7 +189,6 @@ export async function parsePDF(file: File): Promise<string> {
 }
 
 function extractTextFromPDFBuffer(buffer: ArrayBuffer): string {
-  // Basic PDF text extraction - looks for text between BT/ET markers
   const bytes = new Uint8Array(buffer);
   const text = new TextDecoder('latin1').decode(bytes);
 
@@ -213,18 +198,25 @@ function extractTextFromPDFBuffer(buffer: ArrayBuffer): string {
 
   while ((match = streamRegex.exec(text)) !== null) {
     const stream = match[1];
-    // Extract text from Tj and TJ operators
     const tjRegex = /\(([^)]*)\)\s*Tj/g;
     let tjMatch;
     while ((tjMatch = tjRegex.exec(stream)) !== null) {
       textParts.push(tjMatch[1]);
+    }
+    const tjArrayRegex = /\[([^\]]*)\]\s*TJ/g;
+    let tjArrayMatch;
+    while ((tjArrayMatch = tjArrayRegex.exec(stream)) !== null) {
+      const inner = tjArrayMatch[1];
+      const parts = inner.match(/\(([^)]*)\)/g);
+      if (parts) {
+        textParts.push(parts.map(p => p.slice(1, -1)).join(''));
+      }
     }
   }
 
   return textParts.join('\n') || 'Kon geen tekst uit PDF halen. Probeer een CSV of MT940 bestand.';
 }
 
-// Auto-match transactions to subscriptions
 export function autoMatchTransactions(
   transactions: Omit<Transaction, 'id' | 'createdAt'>[],
   subscriptions: Subscription[]
@@ -234,8 +226,11 @@ export function autoMatchTransactions(
 
     for (const sub of subscriptions) {
       const name = sub.name.toLowerCase();
-      // Match if subscription name appears in transaction description
-      if (desc.includes(name) || name.includes(desc.split(' ')[0])) {
+      if (name.length < 3) return tx;
+      const firstName = desc.split(' ')[0];
+      const nameMatch = desc.includes(name) ||
+        (firstName.length >= 4 && name.toLowerCase().includes(firstName.toLowerCase()));
+      if (nameMatch) {
         return { ...tx, subscriptionId: sub.id };
       }
     }

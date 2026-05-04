@@ -1,7 +1,7 @@
 import initSqlJs from 'sql.js';
 import type { Database } from 'sql.js';
 import type { Subscription, Transaction, TransactionType, RecurringType, Pot, BankAccount } from '../types';
-import { getMonthlyEquivalent } from './calculations';
+import { getMonthlyEquivalent, calculateNextPaymentDate } from './calculations';
 import { v4 as uuidv4 } from 'uuid';
 
 let db: Database | null = null;
@@ -154,9 +154,11 @@ export function addSubscription(sub: Omit<Subscription, 'id' | 'createdAt' | 'up
   return { ...sub, id, createdAt: now, updatedAt: now };
 }
 
+const SUBSCRIPTION_FIELDS = new Set(['name','category','price','currency','billingCycle','startDate','nextPaymentDate','notes','website','imageUrl','color','active']);
+
 export function updateSubscription(id: string, sub: Partial<Subscription>): void {
   const now = new Date().toISOString();
-  const entries = Object.entries(sub).filter(([key]) => key !== 'id' && key !== 'createdAt');
+  const entries = Object.entries(sub).filter(([key]) => SUBSCRIPTION_FIELDS.has(key));
   const fields = entries.map(([key]) => `${key} = ?`);
   const values = entries.map(([, val]) => val === true ? 1 : val === false ? 0 : val);
   fields.push('updatedAt = ?');
@@ -168,6 +170,20 @@ export function updateSubscription(id: string, sub: Partial<Subscription>): void
 export function deleteSubscription(id: string): void {
   getDb().run('DELETE FROM subscriptions WHERE id = ?', [id]);
   getDb().run('UPDATE transactions SET subscriptionId = NULL WHERE subscriptionId = ?', [id]);
+  saveDatabase();
+}
+
+export function refreshStalePaymentDates(): void {
+  const subs = getAllSubscriptions();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (const sub of subs) {
+    const next = new Date(sub.nextPaymentDate + 'T00:00:00');
+    if (next < today) {
+      const updated = calculateNextPaymentDate(sub.startDate, sub.billingCycle);
+      getDb().run('UPDATE subscriptions SET nextPaymentDate = ? WHERE id = ?', [updated, sub.id]);
+    }
+  }
   saveDatabase();
 }
 
@@ -244,6 +260,11 @@ export function addManualTransaction(tx: {
 export function addTransactions(txs: Omit<Transaction, 'id' | 'createdAt'>[], accountId?: string): void {
   const now = new Date().toISOString();
   for (const tx of txs) {
+    const exists = getDb().exec(
+      `SELECT 1 FROM transactions WHERE date = ? AND description = ? AND amount = ? AND accountId IS ? LIMIT 1`,
+      [tx.date, tx.description, tx.amount, accountId ?? tx.accountId ?? null]
+    );
+    if (exists.length > 0 && exists[0].values.length > 0) continue;
     const id = uuidv4();
     getDb().run(
       `INSERT INTO transactions (id, date, description, amount, type, accountId, toAccountId, potId, subscriptionId, recurring, source, raw, createdAt)
@@ -273,8 +294,10 @@ export function deleteTransactionWithGroup(id: string): void {
   saveDatabase();
 }
 
+const TRANSACTION_FIELDS = new Set(['date','description','amount','type','accountId','toAccountId','potId','subscriptionId','recurring','groupId','isExpected','source','raw']);
+
 export function updateTransaction(id: string, updates: Partial<Transaction>): void {
-  const entries = Object.entries(updates).filter(([key]) => key !== 'id' && key !== 'createdAt');
+  const entries = Object.entries(updates).filter(([key]) => TRANSACTION_FIELDS.has(key));
   const fields = entries.map(([key]) => `${key} = ?`);
   const values = entries.map(([, val]) => val);
   values.push(id);
@@ -299,9 +322,11 @@ export function addBankAccount(acc: Omit<BankAccount, 'id' | 'createdAt' | 'upda
   return { ...acc, id, createdAt: now, updatedAt: now };
 }
 
+const BANK_ACCOUNT_FIELDS = new Set(['name','type','color','iban','openingBalance']);
+
 export function updateBankAccount(id: string, acc: Partial<BankAccount>): void {
   const now = new Date().toISOString();
-  const entries = Object.entries(acc).filter(([k]) => k !== 'id' && k !== 'createdAt');
+  const entries = Object.entries(acc).filter(([k]) => BANK_ACCOUNT_FIELDS.has(k));
   const fields = entries.map(([k]) => `${k} = ?`);
   const values = entries.map(([, v]) => v);
   fields.push('updatedAt = ?');
@@ -313,6 +338,7 @@ export function updateBankAccount(id: string, acc: Partial<BankAccount>): void {
 export function deleteBankAccount(id: string): void {
   getDb().run('DELETE FROM bank_accounts WHERE id = ?', [id]);
   getDb().run('UPDATE transactions SET accountId = NULL WHERE accountId = ?', [id]);
+  getDb().run('UPDATE transactions SET toAccountId = NULL WHERE toAccountId = ?', [id]);
   saveDatabase();
 }
 
@@ -346,9 +372,11 @@ export function addPot(pot: Omit<Pot, 'id' | 'createdAt' | 'updatedAt'>): Pot {
   return { ...pot, id, createdAt: now, updatedAt: now };
 }
 
+const POT_FIELDS = new Set(['name','color','budgetAmount','description']);
+
 export function updatePot(id: string, pot: Partial<Pot>): void {
   const now = new Date().toISOString();
-  const entries = Object.entries(pot).filter(([k]) => k !== 'id' && k !== 'createdAt');
+  const entries = Object.entries(pot).filter(([k]) => POT_FIELDS.has(k));
   const fields = entries.map(([k]) => `${k} = ?`);
   const values = entries.map(([, v]) => v);
   fields.push('updatedAt = ?');
@@ -391,13 +419,15 @@ export function getBalance(): number {
 
 export function getMonthlyStats(year: number, month: number): { income: number; expenses: number } {
   const from = `${year}-${String(month).padStart(2, '0')}-01`;
-  const to = `${year}-${String(month).padStart(2, '0')}-31`;
+  const nextMonth = month === 12
+    ? `${year + 1}-01-01`
+    : `${year}-${String(month + 1).padStart(2, '0')}-01`;
   const r = getDb().exec(
     `SELECT
       COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as income,
       COALESCE(SUM(CASE WHEN type = 'expense' THEN ABS(amount) ELSE 0 END), 0) as expenses
-     FROM transactions WHERE date >= ? AND date <= ?`,
-    [from, to]
+     FROM transactions WHERE date >= ? AND date < ?`,
+    [from, nextMonth]
   );
   if (!r.length) return { income: 0, expenses: 0 };
   return { income: r[0].values[0][0] as number, expenses: r[0].values[0][1] as number };
@@ -405,10 +435,12 @@ export function getMonthlyStats(year: number, month: number): { income: number; 
 
 export function getPotSpending(potId: string, year: number, month: number): number {
   const from = `${year}-${String(month).padStart(2, '0')}-01`;
-  const to = `${year}-${String(month).padStart(2, '0')}-31`;
+  const nextMonth = month === 12
+    ? `${year + 1}-01-01`
+    : `${year}-${String(month + 1).padStart(2, '0')}-01`;
   const r = getDb().exec(
-    `SELECT COALESCE(SUM(ABS(amount)), 0) as total FROM transactions WHERE potId = ? AND amount < 0 AND date >= ? AND date <= ?`,
-    [potId, from, to]
+    `SELECT COALESCE(SUM(ABS(amount)), 0) as total FROM transactions WHERE potId = ? AND amount < 0 AND date >= ? AND date < ?`,
+    [potId, from, nextMonth]
   );
   return r.length ? (r[0].values[0][0] as number) : 0;
 }
