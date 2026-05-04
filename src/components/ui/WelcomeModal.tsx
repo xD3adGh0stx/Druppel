@@ -25,7 +25,7 @@ export default function WelcomeModal() {
       <div className="rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden bg-white border border-slate-200">
 
         {/* Header */}
-        <div className="bg-linear-to-br from-blue-500 to-blue-700 p-8 text-center">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-700 p-8 text-center">
           <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <img src="/logo.png" alt="Druppel" className="w-11 h-11" />
           </div>

@@ -33,20 +33,24 @@ function AppInner() {
   useEffect(() => {
     applyStatusBar()
     initDatabase()
-      .then(async () => {
+      .then(() => {
         refreshStalePaymentDates()
         setLoading(false)
-        const granted = await requestNotificationPermission()
-        if (granted) {
-          const subs = getAllSubscriptions()
-          await schedulePaymentNotifications(subs, profile.notifyDays)
-        }
       })
       .catch(err => {
         setError(err.message)
         setLoading(false)
       })
   }, [])
+
+  useEffect(() => {
+    if (loading) return
+    requestNotificationPermission().then(granted => {
+      if (granted) {
+        schedulePaymentNotifications(getAllSubscriptions(), profile.notifyDays)
+      }
+    })
+  }, [loading, profile.notifyDays])
 
   if (loading) {
     return (

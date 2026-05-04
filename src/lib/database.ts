@@ -154,9 +154,11 @@ export function addSubscription(sub: Omit<Subscription, 'id' | 'createdAt' | 'up
   return { ...sub, id, createdAt: now, updatedAt: now };
 }
 
+const SUBSCRIPTION_FIELDS = new Set(['name','category','price','currency','billingCycle','startDate','nextPaymentDate','notes','website','imageUrl','color','active']);
+
 export function updateSubscription(id: string, sub: Partial<Subscription>): void {
   const now = new Date().toISOString();
-  const entries = Object.entries(sub).filter(([key]) => key !== 'id' && key !== 'createdAt');
+  const entries = Object.entries(sub).filter(([key]) => SUBSCRIPTION_FIELDS.has(key));
   const fields = entries.map(([key]) => `${key} = ?`);
   const values = entries.map(([, val]) => val === true ? 1 : val === false ? 0 : val);
   fields.push('updatedAt = ?');
@@ -292,8 +294,10 @@ export function deleteTransactionWithGroup(id: string): void {
   saveDatabase();
 }
 
+const TRANSACTION_FIELDS = new Set(['date','description','amount','type','accountId','toAccountId','potId','subscriptionId','recurring','groupId','isExpected','source','raw']);
+
 export function updateTransaction(id: string, updates: Partial<Transaction>): void {
-  const entries = Object.entries(updates).filter(([key]) => key !== 'id' && key !== 'createdAt');
+  const entries = Object.entries(updates).filter(([key]) => TRANSACTION_FIELDS.has(key));
   const fields = entries.map(([key]) => `${key} = ?`);
   const values = entries.map(([, val]) => val);
   values.push(id);
@@ -318,9 +322,11 @@ export function addBankAccount(acc: Omit<BankAccount, 'id' | 'createdAt' | 'upda
   return { ...acc, id, createdAt: now, updatedAt: now };
 }
 
+const BANK_ACCOUNT_FIELDS = new Set(['name','type','color','iban','openingBalance']);
+
 export function updateBankAccount(id: string, acc: Partial<BankAccount>): void {
   const now = new Date().toISOString();
-  const entries = Object.entries(acc).filter(([k]) => k !== 'id' && k !== 'createdAt');
+  const entries = Object.entries(acc).filter(([k]) => BANK_ACCOUNT_FIELDS.has(k));
   const fields = entries.map(([k]) => `${k} = ?`);
   const values = entries.map(([, v]) => v);
   fields.push('updatedAt = ?');
@@ -366,9 +372,11 @@ export function addPot(pot: Omit<Pot, 'id' | 'createdAt' | 'updatedAt'>): Pot {
   return { ...pot, id, createdAt: now, updatedAt: now };
 }
 
+const POT_FIELDS = new Set(['name','color','budgetAmount','description']);
+
 export function updatePot(id: string, pot: Partial<Pot>): void {
   const now = new Date().toISOString();
-  const entries = Object.entries(pot).filter(([k]) => k !== 'id' && k !== 'createdAt');
+  const entries = Object.entries(pot).filter(([k]) => POT_FIELDS.has(k));
   const fields = entries.map(([k]) => `${k} = ?`);
   const values = entries.map(([, v]) => v);
   fields.push('updatedAt = ?');

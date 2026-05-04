@@ -1,7 +1,6 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import type { Subscription } from '../types';
-import { daysUntilNextPayment } from './calculations';
-import { formatCurrency } from './calculations';
+import { daysUntilNextPayment, formatCurrency } from './calculations';
 
 export async function requestNotificationPermission(): Promise<boolean> {
   try {
